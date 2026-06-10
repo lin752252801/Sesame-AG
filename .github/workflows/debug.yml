@@ -1,4 +1,4 @@
-Name: 🐞 Build Debug APK
+name: 🐞 Build Debug APK
 run-name: 🐞 Debug Build - ${{ github.actor }}
 
 on:
@@ -11,9 +11,18 @@ on:
 jobs:
   debug-build:
     runs-on: ubuntu-latest
+
     steps:
+      - name: ⏰ Set Timezone to Asia/Shanghai
+        run: |
+          sudo timedatectl set-timezone Asia/Shanghai
+          echo "Current time: $(date)"
+
       - name: 👨🏻‍💻 Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: ☕ Set up JDK
         uses: actions/setup-java@v4
@@ -24,17 +33,28 @@ jobs:
 
       - name: 🤝 Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-version: wrapper
 
       - name: ☎️ Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: 🔥 Build Debug APK (arm64-v8a only)
-        # 通过 Gradle 属性过滤架构，只构建 arm64-v8a
-        run: ./gradlew assembleDebug -PabiFilters=arm64-v8a
+      - name: 🔥 Build Debug APK with Gradle
+        run: ./gradlew assembleDebug -Pversion=${{ github.ref_name }}
 
-      - name: 🚀 Upload Debug APK
+      - name: 📊 Locate Debug APKs
+        id: locate_apks
+        run: |
+          debug_dir="app/build/outputs/apk/debug"
+          # 仅查找 arm64-v8a 架构的包
+          arm64_apk=$(find "$debug_dir" -name "*-arm64-v8a-*.apk" | head -n 1)
+          
+          echo "arm64_apk=$arm64_apk" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Upload Debug APK - arm64-v8a
+        if: steps.locate_apks.outputs.arm64_apk != ''
         uses: actions/upload-artifact@v4
         with:
           name: debug-apk-arm64-v8a
-          # 通常 debug 包会在此路径，如果找不到，Gradle 会自动报错提示路径
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.locate_apks.outputs.arm64_apk }}
