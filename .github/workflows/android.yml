@@ -5,7 +5,7 @@ on:
   push:
     tags:
       - "[0-9]*-*"
-
+  workflow_dispatch: 
 
 env:
   CI: "true"
@@ -603,3 +603,4 @@ jobs:
             echo
             echo "- 原因: ${{ needs.preflight.outputs.reason }}"
           } >> "$GITHUB_STEP_SUMMARY"
+
